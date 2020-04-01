@@ -12,82 +12,99 @@ import { mnemonicToSeedSync } from '../wallet/mnemonic';
 import Address, { AddressType, publicKeyToAddress, AddressPrefix } from '../wallet/address'
 import { generateMnemonic, AccountExtendedPublicKey, ExtendedPrivateKey } from "../wallet/key";
 
-
 describe("", () => {
   const mnemonic = "excuse speak boring lunar consider sea behave next fog arrow black sweet"
   const hdMainnetAddr = "ckb1qyqt9ed4emcxyfed77ed0dp7kcm3mxsn97lsvzve7j"
   const hdTestnetAddr = "ckt1qyqt9ed4emcxyfed77ed0dp7kcm3mxsn97ls38jxjw"
   const password = "123456"
 
-  // it("send tx", async () => {
+  it("send tx", async () => {
 
-  //   jest.setTimeout(10000)
+    jest.setTimeout(10000)
 
-  //   const privateKey = "0xd40c79c4583b7d9eb5310649c5bd3d608ce24fffe5dd955e718439a1b40a5692"
-  //   const publicKey = "0x027815a2decd1fb52f982dfe12304e6cf2ea5441d55f1a034c581d52f8cc2f416f"
-  //   const blake160 = `0x${ckb.utils.blake160(publicKey, 'hex')}`
+    const privateKey = "0xd40c79c4583b7d9eb5310649c5bd3d608ce24fffe5dd955e718439a1b40a5692"
+    const publicKey = "0x027815a2decd1fb52f982dfe12304e6cf2ea5441d55f1a034c581d52f8cc2f416f"
+    const blake160 = `0x${ckb.utils.blake160(publicKey, 'hex')}`
 
-  //   const lockHash = ckb.utils.scriptToHash({
-  //     hashType: "type",
-  //     codeHash: chain.TestNetCodeHash,
-  //     args: blake160
-  //   })
+    const lockHash = ckb.utils.scriptToHash({
+      hashType: "type",
+      codeHash: chain.TestNetCodeHash,
+      args: blake160
+    })
 
-  //   console.log("lockHash =>", lockHash);
+    console.log("lockHash =>", lockHash);
 
-  //   const cells = await ckb.rpc.getCellsByLockHash(lockHash, BigInt(41036), BigInt(41038))
+    const cells = await ckb.rpc.getCellsByLockHash(lockHash, BigInt(41036), BigInt(41038))
 
-  //   // console.log("cell =>", cells);
+    // console.log("cell =>", cells);
 
-  //   const unspentCells = await ckb.loadCells({
-  //     lockHash,
-  //     start: BigInt(41036),
-  //     end: BigInt(41038),
-  //   })
+    const unspentCells = await ckb.loadCells({
+      lockHash,
+      start: BigInt(41036),
+      end: BigInt(41038),
+    })
 
-  //   console.log("unspentCells =>", unspentCells);
+    console.log("unspentCells =>", unspentCells);
 
-  //   let sum = BigInt(0)
-  //   for (const cell of cells) {
-  //     sum += BigInt(cell.capacity)
-  //   }
+    let sum = BigInt(0)
+    for (const cell of cells) {
+      sum += BigInt(cell.capacity)
+    }
 
-  //   console.log("sum ->", sum);
+    console.log("sum ->", sum);
 
-  //   const testnetAddr = CkbUtils.privateKeyToAddress(privateKey, {
-  //     prefix: 'ckt',
-  //   })
-  //   console.log("addr =>", testnetAddr)
+    const testnetAddr = CkbUtils.privateKeyToAddress(privateKey, {
+      prefix: 'ckt',
+    })
+    console.log("addr =>", testnetAddr)
 
-  //   const secp256k1Dep = await ckb.loadSecp256k1Dep();
+    const secp256k1Dep = await ckb.loadSecp256k1Dep();
 
-  //   const rawTransaction = ckb.generateRawTransaction({
-  //     fromAddress: testnetAddr,
-  //     toAddress: hdTestnetAddr,
-  //     capacity: BigInt(1000e8), // 1000CKB
-  //     fee: BigInt(1000000),
-  //     safeMode: true,
-  //     cells: unspentCells, // 选填， unspentCells 与cells 不一样
-  //     deps: ckb.config.secp256k1Dep,
-  //   })
+    const rawTransaction = ckb.generateRawTransaction({
+      fromAddress: testnetAddr,
+      toAddress: hdTestnetAddr,
+      capacity: BigInt(1000e8), // 1000CKB
+      fee: BigInt(1000000),
+      safeMode: true,
+      cells: unspentCells, // 选填， unspentCells 与cells 不一样
+      deps: ckb.config.secp256k1Dep,
+    })
 
 
-  //   console.log("rawTransaction =>", rawTransaction);
+    console.log("rawTransaction =>", rawTransaction);
 
-  //   // rawTransaction.witnesses = rawTransaction.inputs.map(() => '0x')
-  //   rawTransaction.witnesses[0] = {
-  //     lock: '',
-  //     inputType: '',
-  //     outputType: ''
-  //   }
+    // rawTransaction.witnesses = rawTransaction.inputs.map(() => '0x')
+    rawTransaction.witnesses[0] = {
+      lock: '',
+      inputType: '',
+      outputType: ''
+    }
 
-  //   const signedTx = ckb.signTransaction(privateKey)(rawTransaction)
-  //   console.log("signedTx =>", JSON.stringify(signedTx, null, 2))
+    const signedTx = ckb.signTransaction(privateKey)(rawTransaction)
+    console.log("signedTx =>", JSON.stringify(signedTx, null, 2))
 
-  //   const realTxHash = await ckb.rpc.sendTransaction(signedTx)
-  //   console.log(`The real transaction hash is: ${realTxHash}`)
-  // })
+    const realTxHash = await ckb.rpc.sendTransaction(signedTx)
+    console.log(`The real transaction hash is: ${realTxHash}`)
+  })
 
+
+  it("deriveChild", () => {
+
+    const seed = mnemonicToSeedSync(mnemonic)
+    const masterKeychain = Keychain.fromSeed(seed)
+    masterKeychain.privateKey.toString("hex")
+
+    const accountKeychain = masterKeychain.derivePath(AccountExtendedPublicKey.ckbAccountPath);
+
+    const firstPath = AccountExtendedPublicKey.ckbAccountPath + "/0/0" // 第1个地址
+
+    const hdPrivateKey = masterKeychain.derivePath(firstPath).privateKey.toString('hex')
+
+    const firstPrivateKey = masterKeychain.derivePath(AccountExtendedPublicKey.ckbAccountPath + "/0").deriveChild(0, false).privateKey.toString('hex')
+
+    expect(firstPrivateKey).toBe(hdPrivateKey)
+
+  })
 
   it("HD wallet", async () => {
 
@@ -141,7 +158,7 @@ describe("", () => {
     const rawTransaction = ckb.generateRawTransaction({
       fromAddress: testnetAddr1,
       toAddress: "ckt1qyqqep5jcm5uvpawpe4v2wmsh6zjlv27vj5qw0k009",
-      capacity: BigInt(3000e8), // 1000CKB
+      capacity: BigInt(3000e8), // 3000CKB
       fee: BigInt(1000000),
       safeMode: true,
       cells: unspentCells, // 选填， unspentCells 与cells 不一样
@@ -165,5 +182,3 @@ describe("", () => {
   })
 
 })
-
-
