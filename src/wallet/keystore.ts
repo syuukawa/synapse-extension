@@ -163,7 +163,7 @@ export default class Keystore {
   //     Keystore.scryptOptions(kdfparams)
   //   )
   // }
-    derivedKey = (password: string) => {
+  derivedKey = (password: string) => {
     const { kdfparams } = this.crypto
     return scryptsy(
       Buffer.from(password),
@@ -196,4 +196,75 @@ export default class Keystore {
     return obj
   }
 
+  static lock = ( // create
+    privateKey: string,
+    password: string,
+    options: {
+      salt ? : Buffer;iv ? : Buffer
+    } = {}
+  ) => {
+    const salt = options.salt || crypto.randomBytes(32)
+    const iv = options.iv || crypto.randomBytes(16)
+    const kdfparams: KdfParams = {
+      dklen: 32,
+      salt: salt.toString('hex'),
+      n: 2 ** 18,
+      r: 8,
+      p: 1,
+    }
+
+    const derivedKey = scryptsy(
+      Buffer.from(password),
+      salt,
+      kdfparams.n,
+      kdfparams.r,
+      kdfparams.p,
+      kdfparams.dklen,
+    )
+
+    const cipher = crypto.createCipheriv(CIPHER, derivedKey.slice(0, 16), iv)
+    if (!cipher) {
+      throw new UnsupportedCipher()
+    }
+
+    const buf = Buffer.from(privateKey, 'utf8') // string to buffer // https://stackoverflow.com/a/37436949/1240067
+
+    const ciphertext = Buffer.concat([
+      cipher.update(buf),
+      cipher.final(),
+    ])
+
+    return new Keystore({
+        ciphertext: ciphertext.toString('hex'),
+        cipherparams: {
+          iv: iv.toString('hex'),
+        },
+        cipher: CIPHER,
+        kdf: 'scrypt',
+        kdfparams,
+        mac: Keystore.mac(derivedKey, ciphertext),
+      },
+      uuid()
+    )
+  }
+
+  recover(password: string): string { // 解密
+    // decryptCrowdsale https://github.com/ethers-io/ethers.js/blob/master/src.ts/utils/secret-storage.ts#L92
+    const derivedKey = this.derivedKey(password)
+
+    const ciphertext = Buffer.from(this.crypto.ciphertext, 'hex')
+    if (Keystore.mac(derivedKey, ciphertext) !== this.crypto.mac) {
+      throw new IncorrectPassword()
+    }
+
+    const decipher = crypto.createDecipheriv(
+      this.crypto.cipher,
+      derivedKey.slice(0, 16),
+      Buffer.from(this.crypto.cipherparams.iv, 'hex')
+    )
+
+    const seed = Buffer.concat([decipher.update(ciphertext), decipher.final()])
+    return seed.toString('hex')
+
+  }
 }
