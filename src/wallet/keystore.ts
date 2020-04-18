@@ -227,7 +227,9 @@ export default class Keystore {
       throw new UnsupportedCipher()
     }
 
-    const buf = Buffer.from(privateKey, 'utf8') // string to buffer // https://stackoverflow.com/a/37436949/1240067
+    const buf = Buffer.from(privateKey, 'hex')
+    // string to buffer https://stackoverflow.com/a/37436949/1240067
+    // 不能 Buffer.from(privateKey, 'utf8')
 
     const ciphertext = Buffer.concat([
       cipher.update(buf),
@@ -249,7 +251,6 @@ export default class Keystore {
   }
 
   recover(password: string): string { // 解密
-    // decryptCrowdsale https://github.com/ethers-io/ethers.js/blob/master/src.ts/utils/secret-storage.ts#L92
     const derivedKey = this.derivedKey(password)
 
     const ciphertext = Buffer.from(this.crypto.ciphertext, 'hex')
@@ -267,4 +268,5 @@ export default class Keystore {
     return seed.toString('hex')
 
   }
+
 }
