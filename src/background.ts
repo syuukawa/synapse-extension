@@ -26,10 +26,12 @@ let wallets = []
 let currWallet = {}
 let addresses = []
 
-chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener(async (request, sender, sendResp) => {
 
   //IMPORT_MNEMONIC
   if (request.messageType === MESSAGE_TYPE.IMPORT_MNEMONIC) {
+    console.time()
+
     const mnemonic = request.mnemonic.trim();
     const password = request.password.trim();
 
@@ -59,12 +61,16 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     const addressObj = Address.fromPrivateKey(privateKey);
     const address = addressObj.address;
 
-    chrome.runtime.sendMessage({
+    chrome.runtime.sendMessage({ // 生成地址后，快速向页面发送地址信息
       messageType: MESSAGE_TYPE.SEND_ADDR,
       address
     })
 
+    console.timeEnd()
+
+    // 以下为耗时操作
     // 验证导入的地址是否已存在
+    console.time("Keystore")
     const isExistObj = addressIsExist(address, addresses);
     if (isExistObj["isExist"]) {
       const index = isExistObj["index"];
@@ -80,6 +86,8 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     }
     //002-
     saveToStorage();
+
+    console.timeEnd("Keystore")
   }
 
   //GEN_MNEMONIC
