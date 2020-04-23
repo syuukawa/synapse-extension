@@ -54,31 +54,28 @@ export default function(props: AppProps, state: AppState) {
 
   React.useEffect(() => {
     chrome.runtime.onMessage.addListener((
-      message,
-      sender,
-      sendResponse
-    ) =>{
-      if (message.messageType === MESSAGE_TYPE.ADDRESS_INFO) {
-        if (message.address) {
-          setAddress(message.address);
+      msg, sender, sendResponse
+    ) => {
+
+      if (msg.messageType === MESSAGE_TYPE.SEND_ADDR) {
+        if (msg.address) {
+          setAddress(msg.address)
         } else {
           history.push('./import-mnemonic');
         }
-        // get balance by address
-      } else if (message.messageType === MESSAGE_TYPE.BALANCE_BY_ADDRESS) {
-        setBalance(message.balance/10**8);
+      }
+
+      if (msg.messageType === MESSAGE_TYPE.BALANCE_BY_ADDRESS) {
+        setBalance(msg.balance / 10 ** 8);
         setLoading(false);
       }
     });
 
     chrome.runtime.sendMessage({
-      messageType: MESSAGE_TYPE.REQUEST_ADDRESS_INFO
+      messageType: MESSAGE_TYPE.REQUEST_BALANCE_BY_ADDRESS,
+      address
     });
 
-    chrome.runtime.sendMessage({
-      messageType: MESSAGE_TYPE.REQUEST_BALANCE_BY_ADDRESS,
-      network
-    });
     setLoading(true);
   }, []);
 
@@ -156,12 +153,12 @@ export default function(props: AppProps, state: AppState) {
 
         <div className={classes.dialogContent}>
           <div className={classes.tip}>{tooltip}</div>
-          {address[network] ? (
-            <QrCode value={address[network]} size={200} />
+          {address ? (
+            <QrCode value={address} size={200} />
           ) : (
             <div>loading</div>
           )}
-          <div className={classes.address}>{address[network]}</div>
+          <div className={classes.address}>{address}</div>
         </div>
       </Dialog>
     </div>

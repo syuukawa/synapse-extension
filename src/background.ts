@@ -30,24 +30,21 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 
   //IMPORT_MNEMONIC
   if (request.messageType === MESSAGE_TYPE.IMPORT_MNEMONIC) {
-    // call import mnemonic method
     const mnemonic = request.mnemonic.trim();
     const password = request.password.trim();
 
-    //助记词有效性的验证
+    //验证助记词
     const isValidateMnemonic = validateMnemonic(mnemonic);
-    console.log(isValidateMnemonic)
     if (!isValidateMnemonic) {
-      console.log('isValidateMnemonic: ', "Not a ValidateMnemonic");
       chrome.runtime.sendMessage(MESSAGE_TYPE.IS_NOT_VALIDATE_MNEMONIC);
       return;
+    } else {
+      chrome.runtime.sendMessage(MESSAGE_TYPE.VALIDATE_PASS)
     }
 
-    //store the mnemonic entropy
+    // store the mnemonic entropy
     const entropy = mnemonicToEntropy(mnemonic);
-    const entropyKeystore = Keystore.encrypt(Buffer.from(entropy, "hex"), password);
 
-    // words 是否在助记词表中
     const seed = mnemonicToSeedSync(mnemonic)
     const masterKeychain = Keychain.fromSeed(seed)
 
@@ -56,31 +53,33 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
       masterKeychain.chainCode.toString('hex')
     )
 
-    const rootKeystore = Keystore.encrypt(Buffer.from(extendedKey.serialize(), "hex"), password);
-
     //没有0x的privateKey
     const privateKey = masterKeychain.derivePath(Address.pathForReceiving(0)).privateKey.toString('hex');
-    console.log("privateKey =>", privateKey);
 
-    const addressObject = Address.fromPrivateKey(privateKey);
-    const address = addressObject.address;
+    const addressObj = Address.fromPrivateKey(privateKey);
+    const address = addressObj.address;
 
-    //验证导入的Keystore是否已经存在
+    chrome.runtime.sendMessage({
+      messageType: MESSAGE_TYPE.SEND_ADDR,
+      address
+    })
+
+    // 验证导入的地址是否已存在
     const isExistObj = addressIsExist(address, addresses);
     if (isExistObj["isExist"]) {
       const index = isExistObj["index"];
       currWallet = wallets[addresses[index].walletIndex];
     } else {
       //001-
+      const rootKeystore = Keystore.encrypt(Buffer.from(extendedKey.serialize(), "hex"), password);
+      const entropyKeystore = Keystore.encrypt(Buffer.from(entropy, "hex"), password);
       privateKeyToKeystore(privateKey, password, entropyKeystore, rootKeystore);
-      
-      //Add Keyper to Synapse     
-      await AddKeyperWallet(privateKey,password);
+
+      //Add Keyper to Synapse
+      await AddKeyperWallet(privateKey, password);
     }
     //002-
     saveToStorage();
-
-    chrome.runtime.sendMessage(MESSAGE_TYPE.VALIDATE_PASS)
   }
 
   //GEN_MNEMONIC
@@ -145,32 +144,28 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     chrome.runtime.sendMessage(MESSAGE_TYPE.VALIDATE_PASS);
   }
 
-  //REQUEST_ADDRESS_INFO
-  if (request.messageType === MESSAGE_TYPE.REQUEST_ADDRESS_INFO) {
-    chrome.storage.sync.get(['currWallet'], function (wallet) {
-      const message: any = {
-        messageType: MESSAGE_TYPE.ADDRESS_INFO
-      }
-      if (wallet) {
-        message.address = wallet.currWallet.address
-      }
+  // REQUEST_ADDRESS_INFO
+  // if (request.messageType === MESSAGE_TYPE.REQUEST_ADDRESS_INFO) {
+  //   chrome.storage.sync.get(['currWallet'], function (wallet) {
+  //     const message: any = {
+  //       messageType: MESSAGE_TYPE.ADDRESS_INFO
+  //     }
+  //     if (wallet) {
+  //       message.address = wallet.currWallet.address
+  //     }
+  //     chrome.runtime.sendMessage(message)
+  //   });
+  // }
 
-      chrome.runtime.sendMessage(message)
-    });
-  }
-
-  // get balance by address
   if (request.messageType === MESSAGE_TYPE.REQUEST_BALANCE_BY_ADDRESS) {
-    chrome.storage.sync.get(['currWallet'], async function (wallet) {
-      if (!wallet) return
-      const address = wallet.currWallet.address
-      const balance = await getBalanceByAddress(address)
-      console.log('bg get balance: ', balance)
-      chrome.runtime.sendMessage({
-        balance,
-        messageType: MESSAGE_TYPE.BALANCE_BY_ADDRESS
-      })
-    });
+
+    const address = request.address.trim()
+    const balance = await getBalanceByAddress(address)
+
+    chrome.runtime.sendMessage({
+      balance,
+      messageType: MESSAGE_TYPE.BALANCE_BY_ADDRESS
+    })
   }
 
   //发送交易
@@ -280,7 +275,7 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     chrome.storage.sync.get(['accounts'], async function (result) {
 
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       const accounts = result.accounts;
       const addresses = [];
       for (let i = 0; i < accounts.length; i++) {
@@ -412,6 +407,7 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     const addressObj = Address.fromPrivateKey(privateKey);
     const address = addressObj.address;
     const isExistObj = addressIsExist(address, addresses);
+
     if (isExistObj["isExist"]) {
       const index = isExistObj["index"];
       currWallet = wallets[addresses[index].walletIndex];
@@ -419,8 +415,8 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
       //001-
       privateKeyToKeystore(privateKey, password, "", "");
 
-      //Add Keyper to Synapse     
-      await AddKeyperWallet(privateKey,password);
+      //Add Keyper to Synapse
+      await AddKeyperWallet(privateKey, password);
     }
 
     //002-
