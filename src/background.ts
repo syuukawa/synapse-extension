@@ -76,15 +76,18 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResp) => {
       const index = isExistObj["index"];
       currWallet = wallets[addresses[index].walletIndex];
     } else {
-      //001-
-      const rootKeystore = Keystore.encrypt(Buffer.from(extendedKey.serialize(), "hex"), password);
-      const entropyKeystore = Keystore.encrypt(Buffer.from(entropy, "hex"), password);
-      privateKeyToKeystore(privateKey, password, entropyKeystore, rootKeystore);
 
-      //Add Keyper to Synapse
-      await AddKeyperWallet(privateKey, password);
+      setTimeout(async ()=> {
+        const rootKeystore = Keystore.encrypt(Buffer.from(extendedKey.serialize(), "hex"), password)
+        const entropyKeystore = Keystore.encrypt(Buffer.from(entropy, "hex"), password)
+        privateKeyToKeystore(privateKey, password, entropyKeystore, rootKeystore)
+        // Add Keyper to Synapse
+        await AddKeyperWallet(privateKey, password)
+      }, 0)
+
     }
-    //002-
+
+    // 002-
     saveToStorage();
 
     console.timeEnd("Keystore")
