@@ -3,7 +3,7 @@ import { Ckb } from './utils/constants';
 
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 
-const ckb = new CKB(Ckb.remoteRpcUrl);
+const ckb = new CKB("http://101.200.147.143:8117/rpc")
 
 export const sendSimpleTransaction = async (
   privateKey,
@@ -12,14 +12,18 @@ export const sendSimpleTransaction = async (
   sendCapacity,
   sendFee,
 ) => {
-  
+
   const secp256k1Dep = await ckb.loadSecp256k1Dep();
+
+  // 19-21 可删掉，直接传入 lockHash 参数
   const publicKey = ckb.utils.privateKeyToPublicKey(privateKey);
   const publicKeyHash = `0x${ckb.utils.blake160(publicKey, 'hex')}`;
   const lockHash = ckb.generateLockHash(publicKeyHash, secp256k1Dep);
-  
+
   const unspentCells = await ckb.loadCells({
     lockHash,
+    start: BigInt(210000),
+    STEP: '0x64'
   });
 
   const rawTransaction = ckb.generateRawTransaction({
@@ -38,7 +42,7 @@ export const sendSimpleTransaction = async (
     inputType: '',
     outputType: '',
   };
-  
+
   const signedTx = ckb.signTransaction(privateKey)(rawTransaction);
   const realTxHash = await ckb.rpc.sendTransaction(signedTx);
   return realTxHash;

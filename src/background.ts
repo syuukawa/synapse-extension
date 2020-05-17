@@ -12,7 +12,7 @@ import { ExtendedPrivateKey } from './wallet/key';
 import { sendSimpleTransaction } from './sendSimpleTransaction';
 import { getStatusByTxHash, getBlockNumberByTxHash } from './transaction_del';
 import Address from './wallet/address';
-import { getTxHistories, createScriptObj } from './background/transaction';
+import { getTxHistories, getLiveCells, createScriptObj } from './background/transaction';
 import {
   addKeyperWallet,
   getAddressesList,
@@ -209,6 +209,156 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
       tx: tx,
       messageType: 'yyyy',
     });
+  }
+
+
+  if (request.messageType === 'aaaa') {
+
+    const CKB = require('@nervosnetwork/ckb-sdk-core').default
+
+    const myckb = new CKB("http://101.200.147.143:8117/rpc")
+
+    // 先判断 adddress.balance > monetary, 如果小于，提示余额不足
+
+    const monetary = 10**10 // parseInt(request.monetary.trim())
+
+    chrome.storage.local.get(['currentWallet'], async function (wallet) {
+      const address = wallet.currentWallet ? wallet.currentWallet.address : undefined
+      const publicKey = wallet.currentWallet.publicKey
+      const type = wallet.currentWallet.type
+      const typeScript = createScriptObj(publicKey, type, address)
+      const liveCells = address ? await getLiveCells(typeScript) : []
+
+      let amount = 0
+       for (const cell of liveCells){
+        let capacity = parseInt(cell.output.capacity, 16) // bigInt
+        amount += capacity
+       }
+
+      /**
+      get cell by indexer
+      {
+        "jsonrpc": "2.0",
+        "result": {
+          "last_cursor": "0x409bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce801140000005fed40f987d2578b9e68101f676c4fe72e019f39000000000002a6f90000000100000000",
+          "objects": [{
+            "block_number": "0x24e2f",
+            "out_point": {
+              "index": "0x0",
+              "tx_hash": "0x3552713aa857b4536195d81b4555f86b6566e1416791a8cf60090daa76eeae52"
+            },
+            "output": {
+              "capacity": "0x746a528800",
+              "lock": {
+                "args": "0x5fed40f987d2578b9e68101f676c4fe72e019f39",
+                "code_hash": "0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8",
+                "hash_type": "type"
+              },
+              "type": null
+            },
+            "output_data": "0x",
+            "tx_index": "0x2f"
+          }, {
+            "block_number": "0x2a6f9",
+            "out_point": {
+              "index": "0x0",
+              "tx_hash": "0xdefa2641fe8330086c2160352026be0f09f618bee41bc03ae9cc4f9aeb0a2c21"
+            },
+            "output": {
+              "capacity": "0x746a528800",
+              "lock": {
+                "args": "0x5fed40f987d2578b9e68101f676c4fe72e019f39",
+                "code_hash": "0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8",
+                "hash_type": "type"
+              },
+              "type": null
+            },
+            "output_data": "0x",
+            "tx_index": "0x1"
+          }]
+        },
+        "id": 0
+      }
+      */
+
+      /////////////////
+
+      /*
+      loadCell
+        [{
+          "blockHash": "0xb1260465db00bb77e0159cc86121e13043fe28021b3ac3186fe7f826a1fe6bfa",
+          "lock": {
+            "codeHash": "0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8",
+            "hashType": "type",
+            "args": "0x5fed40f987d2578b9e68101f676c4fe72e019f39"
+          },
+          "outPoint": {
+            "txHash": "0xcff5687e2c12bc1c2c3421489d5147bd918e7f44d8450bf410eb4030eca2cdf0",
+            "index": "0x0"
+          },
+          "outputDataLen": "0x0",
+          "capacity": "0x746a528800",
+          "cellbase": false,
+          "type": null,
+          "dataHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "status": "live"
+        }, {
+          "blockHash": "0x70de4a1b010fbb49bacbf1ece04883c585d79b0826f7445b2f7e447c18b5fc61",
+          "lock": {
+            "codeHash": "0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8",
+            "hashType": "type",
+            "args": "0x5fed40f987d2578b9e68101f676c4fe72e019f39"
+          },
+          "outPoint": {
+            "txHash": "0x51a1a12f21f465c74771e8e906f191eaa83636914264373d2a5cf345ad172dd6",
+            "index": "0x0"
+          },
+          "outputDataLen": "0x0",
+          "capacity": "0x746a528800",
+          "cellbase": false,
+          "type": null,
+          "dataHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "status": "live"
+        }]
+      */
+
+       return
+
+      if (amount >= monetary){
+        // 发送交易
+        const rawTransaction = myckb.generateRawTransaction({
+          fromAddress: address,
+          toAddress: "ckt1qyq047awyfl8j5r5quh6ktppu749ea9zw5qs34uwes",
+          capacity: 100*(10**8),
+          fee: 10e8,
+          safeMode: true,
+          cells: liveCells, //
+          deps: myckb.config.secp256k1Dep,
+        });
+
+        rawTransaction.witnesses = rawTransaction.inputs.map(() => '0x');
+        rawTransaction.witnesses[0] = {
+          lock: '',
+          inputType: '',
+          outputType: '',
+        };
+
+        const signedTx = myckb.signTransaction("privateKey")(rawTransaction);
+        const realTxHash = await myckb.rpc.sendTransaction(signedTx);
+        return realTxHash
+
+      } else {
+        // 如果请求到的 liveCells balance 小于monetary， 分页继续请求
+      }
+
+      // chrome.runtime.sendMessage({
+      //   liveCells,
+      //   messageType: 'bbbb',
+      // });
+
+    });
+
+
   }
 
   //send transactioin

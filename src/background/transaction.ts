@@ -11,6 +11,12 @@ export const getTxHistories = async (scriptObj): Promise<any> => {
   return result.data;
 };
 
+export const getLiveCells = async (scriptObj): Promise<any> => {
+  const url = `${Ckb.testnetApiUrl}/cell/getLiveCells`;
+  const result = await Axios.post(url, scriptObj);
+  return result.data;
+};
+
 export const createScriptObj = (publicKey, type, address) => {
 
   if (type == "Secp256k1") {

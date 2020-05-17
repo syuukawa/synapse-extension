@@ -140,7 +140,12 @@ export default function (props: AppProps, state: AppState) {
   const [valAddress, setValAddress] = React.useState(true);
 
   React.useEffect(() => {
-    chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
+
+    chrome.runtime.sendMessage({
+      messageType: "aaaa",
+    });
+
+    chrome.runtime.onMessage.addListener( (message, sender, sendResp) => {
       if (message.messageType === MESSAGE_TYPE.TO_TX_DETAIL) {
         chrome.runtime.sendMessage({
           message,
